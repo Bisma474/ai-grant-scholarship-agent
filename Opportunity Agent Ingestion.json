@@ -887,7 +887,7 @@
     },
     {
       "parameters": {
-        "url": "https://opportunitiesforafricans.com/feed/",
+        "url": "https://opportunitiesfeed.com/feed/",
         "options": {}
       },
       "type": "n8n-nodes-base.rssFeedRead",
@@ -1188,7 +1188,7 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "e23d3bd8-7d9c-444a-a2f6-ab65cc0b584c",
+  "versionId": "98093251-96b8-4ead-b923-46cead9cae1d",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "8c46280b2696488c3dfe1c98745a4161c147b4bc8f317c3beed2fc096510f973"
