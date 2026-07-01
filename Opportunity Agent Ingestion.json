@@ -1,0 +1,1199 @@
+{
+  "name": "Opportunity Agent Ingestion",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "https://opportunitydesk.org/feed/",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        -176,
+        -576
+      ],
+      "id": "60d66d59-da60-4695-8c5d-7ca3b5f9039e",
+      "name": "RSS Read"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {\n  title: $input.item.json.title || '',\n  org: $input.item.json['dc:creator'] || 'OpportunityDesk',\n  url: $input.item.json.link || '',\n  description: $input.item.json.contentSnippet || $input.item.json.content || '',\n  rawDate: $input.item.json.isoDate || $input.item.json.pubDate || ''\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        272,
+        -672
+      ],
+      "id": "1bb8647a-f5f0-446c-a08d-8a6d6e17b7da",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const crypto = require('crypto');\nconst normalized = (\n  $input.item.json.title + $input.item.json.org\n).toLowerCase().replace(/\\s+/g, ' ').trim();\n\nconst hash = crypto.createHash('md5').update(normalized).digest('hex');\n\nreturn {\n  ...$input.item.json,\n  hash: hash\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        496,
+        -672
+      ],
+      "id": "4d430559-ba8d-4826-8736-41411315609c",
+      "name": "Generate Hash"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "18idCeo7nO_iBMn0La5FIYknqKzv02XwrCgFg2aTbnbk",
+          "mode": "list",
+          "cachedResultName": "Opportunity agent",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/18idCeo7nO_iBMn0La5FIYknqKzv02XwrCgFg2aTbnbk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 2014962491,
+          "mode": "list",
+          "cachedResultName": "Opportunities",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/18idCeo7nO_iBMn0La5FIYknqKzv02XwrCgFg2aTbnbk/edit#gid=2014962491"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "hash",
+              "lookupValue": "={{ $json.hash}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        720,
+        -672
+      ],
+      "id": "3582a82a-70e8-46e3-8f8d-e35054102b59",
+      "name": "Check Duplicate",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "X6Smi9oz0VeQbVe6",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "18idCeo7nO_iBMn0La5FIYknqKzv02XwrCgFg2aTbnbk",
+          "mode": "list",
+          "cachedResultName": "Opportunity agent",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/18idCeo7nO_iBMn0La5FIYknqKzv02XwrCgFg2aTbnbk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Profile",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/18idCeo7nO_iBMn0La5FIYknqKzv02XwrCgFg2aTbnbk/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1168,
+        -672
+      ],
+      "id": "82a3aa4b-44af-4e34-af6c-bf568c97d90f",
+      "name": "Get Profile",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "X6Smi9oz0VeQbVe6",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const lookupResults = $input.all();\n\nconst isEmpty = lookupResults.length === 0 || \n                 (lookupResults.length === 1 && Object.keys(lookupResults[0].json).length === 0);\n\nif (isEmpty) {\n  return $('Generate Hash').all();\n} else {\n  return [];\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        944,
+        -672
+      ],
+      "id": "77377ce6-60ba-41d9-86be-d645a31305da",
+      "name": "Dedup Check",
+      "executeOnce": false,
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"llama-3.3-70b-versatile\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"You are an eligibility checker. Given the student profile and opportunity below, determine eligibility. Respond ONLY with valid JSON, no markdown, no preamble, no explanation outside the JSON.\\n\\nSTUDENT PROFILE:\\nField: {{ $('Get Profile').item.json.field }}\\nDegree Level: {{ $('Get Profile').item.json['degree-level'] }}\\nCGPA: {{ $('Get Profile').item.json.cgpa }}\\nCountry: {{ $('Get Profile').item.json.country }}\\nSkills: {{ $('Get Profile').item.json.skill }}\\n\\nOPPORTUNITY:\\nTitle: {{ $('Dedup Check').item.json.title }}\\nOrg: {{ $('Dedup Check').item.json.org }}\\nDescription: {{ $('Dedup Check').item.json.description }}\\n\\nRespond in this exact JSON shape and nothing else:\\n{\\\"eligible\\\": true, \\\"reason\\\": \\\"one sentence\\\", \\\"missing_requirements\\\": []}\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1392,
+        -672
+      ],
+      "id": "5796cef4-6157-435b-8837-86728833283f",
+      "name": "Check Eligibility",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "HjoVGMgRvfeH3PV2",
+          "name": "Bearer Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const responseText = $input.item.json.choices[0].message.content;\nconst cleaned = responseText.replace(/```json|```/g, '').trim();\n\nlet parsed;\ntry {\n  parsed = JSON.parse(cleaned);\n} catch (e) {\n  parsed = { eligible: false, reason: 'parse_error', missing_requirements: [] };\n}\n\n// Extract deadline from description\nconst description = $('Dedup Check').item.json.description || '';\nlet deadline = '';\n\nconst patterns = [\n  /Deadline:\\s*([A-Za-z]+\\s+\\d{1,2},?\\s+\\d{4})/i,\n  /Deadline:\\s*(\\d{1,2}\\s+[A-Za-z]+,?\\s+\\d{4})/i,\n  /Application Deadline:\\s*([A-Za-z]+\\s+\\d{1,2},?\\s+\\d{4})/i,\n  /Application Deadline:\\s*(\\d{1,2}\\s+[A-Za-z]+,?\\s+\\d{4})/i,\n  /Deadline:\\s*(On Rolling Basis)/i,\n  /Deadline:\\s*(Ongoing)/i,\n];\n\nfor (const pattern of patterns) {\n  const match = description.match(pattern);\n  if (match) {\n    deadline = match[1].trim();\n    break;\n  }\n}\n\nreturn {\n  ...$('Dedup Check').item.json,\n  eligible: parsed.eligible,\n  eligibilityReason: parsed.reason,\n  missingRequirements: (parsed.missing_requirements || []).join(', '),\n  deadline: deadline\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1616,
+        -672
+      ],
+      "id": "5940bb91-363c-405e-98a6-c54eab6be1a4",
+      "name": "Parse Eligibility"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "18idCeo7nO_iBMn0La5FIYknqKzv02XwrCgFg2aTbnbk",
+          "mode": "list",
+          "cachedResultName": "Opportunity agent",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/18idCeo7nO_iBMn0La5FIYknqKzv02XwrCgFg2aTbnbk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 2014962491,
+          "mode": "list",
+          "cachedResultName": "Opportunities",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/18idCeo7nO_iBMn0La5FIYknqKzv02XwrCgFg2aTbnbk/edit#gid=2014962491"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "title": "={{ $json.title }}",
+            "org": "={{ $json.org }}",
+            "url": "={{ $json.url }}",
+            "raw_description": "={{ $json.description }}",
+            "eligible": "={{ $json.eligible }}",
+            "hash": "={{ $json.hash }}",
+            "eligibility-reason": "={{ $json.eligibilityReason }}",
+            "status": "Not Eligible"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "org",
+              "displayName": "org",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "url",
+              "displayName": "url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "deadline",
+              "displayName": "deadline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "raw_description",
+              "displayName": "raw_description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "hash",
+              "displayName": "hash",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "eligible",
+              "displayName": "eligible",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "eligibility-reason",
+              "displayName": "eligibility-reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fit-score",
+              "displayName": "fit-score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fit-rationale",
+              "displayName": "fit-rationale",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "checklist",
+              "displayName": "checklist",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "date added ",
+              "displayName": "date added ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2064,
+        -768
+      ],
+      "id": "b716d8ed-fe37-4ee8-b1c2-fe2ceefc45a8",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "X6Smi9oz0VeQbVe6",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "93b15592-4ee3-403e-9492-23579c486afe",
+              "leftValue": "={{ $json.eligible }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1840,
+        -672
+      ],
+      "id": "2a14ed4b-7b19-4644-ba2e-82099fb7308e",
+      "name": "Is Eligible"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const profile = $('Get Profile').item.json;\nconst opp = $('Parse Eligibility').item.json;\n\nconst prompt = `You are a fit-scoring assistant. Score how well this opportunity matches the student's profile, skills, and resume. Respond ONLY with valid JSON, no markdown, no preamble.\n\nSTUDENT PROFILE:\nField: ${profile.field}\nSkills: ${profile.skill}\nResume Summary: ${profile['resume-text']}\n\nOPPORTUNITY:\nTitle: ${opp.title}\nOrg: ${opp.org}\nDescription: ${opp.description}\n\nRespond in this exact JSON shape and nothing else:\n{\"fit_score\": 75, \"rationale\": \"one to two sentences\"}`;\n\nreturn {\n  ...opp,\n  requestBody: JSON.stringify({\n    model: \"llama-3.3-70b-versatile\",\n    messages: [\n      { role: \"user\", content: prompt }\n    ]\n  })\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2064,
+        -576
+      ],
+      "id": "8f07e134-5d18-46ca-80b7-584015a5df9b",
+      "name": "Build Score Fit Body"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.requestBody }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2288,
+        -576
+      ],
+      "id": "ac936be3-a1f8-4e52-8b7a-bfc355cbe776",
+      "name": "Score Fit",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "HjoVGMgRvfeH3PV2",
+          "name": "Bearer Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const responseText = $input.item.json.choices[0].message.content;\nconst cleaned = responseText.replace(/```json|```/g, '').trim();\n\nlet parsed;\ntry {\n  parsed = JSON.parse(cleaned);\n} catch (e) {\n  parsed = { fit_score: 0, rationale: 'parse_error' };\n}\n\nreturn {\n  ...$('Build Score Fit Body').item.json,\n  fitScore: parsed.fit_score,\n  fitRationale: parsed.rationale\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2512,
+        -576
+      ],
+      "id": "95102d81-8b77-4ee7-b8c8-34493b38a272",
+      "name": "Parse Fit Score"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "dffa1660-8eb6-4ac0-9cbc-aebf28e4d93b",
+              "leftValue": "={{ $json.fitScore }}",
+              "rightValue": 70,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2736,
+        -576
+      ],
+      "id": "137ef508-c27d-436a-ae65-93898f321d79",
+      "name": "Fit Threshold"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "18idCeo7nO_iBMn0La5FIYknqKzv02XwrCgFg2aTbnbk",
+          "mode": "list",
+          "cachedResultName": "Opportunity agent",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/18idCeo7nO_iBMn0La5FIYknqKzv02XwrCgFg2aTbnbk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 2014962491,
+          "mode": "list",
+          "cachedResultName": "Opportunities",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/18idCeo7nO_iBMn0La5FIYknqKzv02XwrCgFg2aTbnbk/edit#gid=2014962491"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "org": "={{ $json.org }}",
+            "title": "={{ $json.title }}",
+            "url": "={{ $json.url }}",
+            "raw_description": "={{ $json.description }}",
+            "eligible": "={{ $json.eligible }}",
+            "hash": "={{ $json.hash }}",
+            "eligibility-reason": "={{ $json.eligibilityReason }}",
+            "fit-score": "={{ $json.fitScore }}",
+            "fit-rationale": "={{ $json.fitRationale }}",
+            "status": "Low Fit"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "org",
+              "displayName": "org",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "url",
+              "displayName": "url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "deadline",
+              "displayName": "deadline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "raw_description",
+              "displayName": "raw_description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "hash",
+              "displayName": "hash",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "eligible",
+              "displayName": "eligible",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "eligibility-reason",
+              "displayName": "eligibility-reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fit-score",
+              "displayName": "fit-score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fit-rationale",
+              "displayName": "fit-rationale",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "checklist",
+              "displayName": "checklist",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "date added ",
+              "displayName": "date added ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2960,
+        -672
+      ],
+      "id": "0fbcc679-e900-4209-aff0-d9d91735db86",
+      "name": "Low Fit",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "X6Smi9oz0VeQbVe6",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const profile = $('Get Profile').item.json;\nconst opp = $input.item.json;\n\nconst prompt = `You are an application assistant. Based on the student's profile, resume, and this opportunity, generate a short actionable checklist: required documents, an internal deadline pacing plan, and any gaps between the resume and the opportunity's stated requirements. Respond ONLY with valid JSON, no markdown, no preamble.\n\nSTUDENT PROFILE:\nField: ${profile.field}\nSkills: ${profile.skill}\nResume Summary: ${profile['resume-text']}\n\nOPPORTUNITY:\nTitle: ${opp.title}\nOrg: ${opp.org}\nDescription: ${opp.description}\nDeadline info if mentioned in description: extract it if present\n\nRespond in this exact JSON shape and nothing else:\n{\"checklist\": \"- Document 1\\\\n- Document 2\\\\n- Pacing step 1\\\\n- Pacing step 2\", \"resume_gaps\": \"one to two sentences on any mismatch between resume and requirements\"}`;\n\nreturn {\n  ...opp,\n  requestBody: JSON.stringify({\n    model: \"llama-3.3-70b-versatile\",\n    messages: [\n      { role: \"user\", content: prompt }\n    ]\n  })\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2960,
+        -480
+      ],
+      "id": "5fbc8b40-732b-430d-9efe-5b0d1dd23a29",
+      "name": "Build Checklist Body"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.requestBody }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        3184,
+        -480
+      ],
+      "id": "fd793843-9abc-470d-9185-9910e24e8196",
+      "name": "Generate Checklist",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "HjoVGMgRvfeH3PV2",
+          "name": "Bearer Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const responseText = $input.item.json.choices[0].message.content;\nconst cleaned = responseText.replace(/```json|```/g, '').trim();\n\nlet parsed;\ntry {\n  parsed = JSON.parse(cleaned);\n} catch (e) {\n  parsed = { checklist: responseText, resume_gaps: '' };\n}\n\nreturn {\n  ...$('Build Checklist Body').item.json,\n  checklist: parsed.checklist,\n  resumeGaps: parsed.resume_gaps\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3408,
+        -480
+      ],
+      "id": "fc859b29-0323-4042-afc7-9305a17b18ea",
+      "name": "Parse Checklist"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "18idCeo7nO_iBMn0La5FIYknqKzv02XwrCgFg2aTbnbk",
+          "mode": "list",
+          "cachedResultName": "Opportunity agent",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/18idCeo7nO_iBMn0La5FIYknqKzv02XwrCgFg2aTbnbk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 2014962491,
+          "mode": "list",
+          "cachedResultName": "Opportunities",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/18idCeo7nO_iBMn0La5FIYknqKzv02XwrCgFg2aTbnbk/edit#gid=2014962491"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "title": "={{ $json.title }}",
+            "org": "={{ $json.org }}",
+            "url": "={{ $json.url }}",
+            "raw_description": "={{ $json.description }}",
+            "hash": "={{ $json.hash }}",
+            "eligible": "={{ $json.eligible }}",
+            "eligibility-reason": "={{ $json.eligibilityReason }}",
+            "fit-score": "={{ $json.fitScore }}",
+            "fit-rationale": "={{ $json.fitRationale }}",
+            "checklist": "={{ $json.checklist }}",
+            "status": "New"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "org",
+              "displayName": "org",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "url",
+              "displayName": "url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "deadline",
+              "displayName": "deadline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "raw_description",
+              "displayName": "raw_description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "hash",
+              "displayName": "hash",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "eligible",
+              "displayName": "eligible",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "eligibility-reason",
+              "displayName": "eligibility-reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fit-score",
+              "displayName": "fit-score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fit-rationale",
+              "displayName": "fit-rationale",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "checklist",
+              "displayName": "checklist",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "date added ",
+              "displayName": "date added ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        3632,
+        -480
+      ],
+      "id": "db5a96ba-caa6-4ef5-99ae-496d33e36122",
+      "name": "Save Opportunity",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "X6Smi9oz0VeQbVe6",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://opportunitiesforafricans.com/feed/",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        -176,
+        -768
+      ],
+      "id": "549b12b7-1ce6-4320-812e-9480577491e5",
+      "name": "RSS Read1"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        48,
+        -672
+      ],
+      "id": "2000e32b-66c4-4147-a038-b6b3f6c647b0",
+      "name": "Merge1"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "d7157fbc-f33e-4739-850c-388a191c0b84",
+      "name": "Execute Workflow",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -400,
+        -672
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "d7157fbc-f33e-4739-850c-388a191c0b84",
+      "name": "Execute Workflow1",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -400,
+        -672
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "RSS Read": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Generate Hash",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Hash": {
+      "main": [
+        [
+          {
+            "node": "Check Duplicate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Duplicate": {
+      "main": [
+        [
+          {
+            "node": "Dedup Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Profile": {
+      "main": [
+        [
+          {
+            "node": "Check Eligibility",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dedup Check": {
+      "main": [
+        [
+          {
+            "node": "Get Profile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Eligibility": {
+      "main": [
+        [
+          {
+            "node": "Parse Eligibility",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Eligibility": {
+      "main": [
+        [
+          {
+            "node": "Is Eligible",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Eligible": {
+      "main": [
+        [
+          {
+            "node": "Build Score Fit Body",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Score Fit Body": {
+      "main": [
+        [
+          {
+            "node": "Score Fit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score Fit": {
+      "main": [
+        [
+          {
+            "node": "Parse Fit Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Fit Score": {
+      "main": [
+        [
+          {
+            "node": "Fit Threshold",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fit Threshold": {
+      "main": [
+        [
+          {
+            "node": "Build Checklist Body",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Low Fit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Checklist Body": {
+      "main": [
+        [
+          {
+            "node": "Generate Checklist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Checklist": {
+      "main": [
+        [
+          {
+            "node": "Parse Checklist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Checklist": {
+      "main": [
+        [
+          {
+            "node": "Save Opportunity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Read1": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Workflow1": {
+      "main": [
+        [
+          {
+            "node": "RSS Read",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "RSS Read1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "e23d3bd8-7d9c-444a-a2f6-ab65cc0b584c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8c46280b2696488c3dfe1c98745a4161c147b4bc8f317c3beed2fc096510f973"
+  },
+  "nodeGroups": [],
+  "id": "9BMwvIEQqCYEHcyn",
+  "tags": []
+}

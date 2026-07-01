@@ -1,0 +1,439 @@
+{
+  "name": "Opportunity Agent-Digest",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtHour": 18
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "68b2a9ee-c8e7-4acb-a567-f6996c23fa5e",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "18idCeo7nO_iBMn0La5FIYknqKzv02XwrCgFg2aTbnbk",
+          "mode": "list",
+          "cachedResultName": "Opportunity agent",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/18idCeo7nO_iBMn0La5FIYknqKzv02XwrCgFg2aTbnbk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 2014962491,
+          "mode": "list",
+          "cachedResultName": "Opportunities",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/18idCeo7nO_iBMn0La5FIYknqKzv02XwrCgFg2aTbnbk/edit#gid=2014962491"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "status",
+              "lookupValue": "New"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        208,
+        0
+      ],
+      "id": "11d99aa8-9fd3-4824-9c2f-61d0abec670d",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "X6Smi9oz0VeQbVe6",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "8653c0b8-2845-4f40-af7a-20260942cfba",
+              "leftValue": "={{ $json.title }}",
+              "rightValue": "",
+              "operator": {
+                "type": "dateTime",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        416,
+        0
+      ],
+      "id": "0655bf61-56c3-4859-84a7-7481af2978e0",
+      "name": "HasNew Opportunities"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "75954a57-7a1e-4dfb-96cd-1d247aa766ad",
+              "leftValue": "={{ $json.eligible }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "ce4f8df8-a816-4209-9a76-c474f12e455b",
+              "leftValue": "={{ $json[\"fit-score\"] }}",
+              "rightValue": 70,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        800,
+        -48
+      ],
+      "id": "899d11de-593b-48d3-91ed-e381d6716db2",
+      "name": "Filter Quality Matches"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nlet html = '<h2>Your Weekly Opportunity Digest</h2>';\n\nif (items.length === 0) {\n  html += '<p>No new matching opportunities this week.</p>';\n} else {\n  for (const item of items) {\n    const d = item.json;\n    html += `\n      <div style=\"margin-bottom:20px;padding:15px;border:1px solid #ddd;border-radius:6px;\">\n        <h3 style=\"margin:0 0 8px 0;\">${d.title} (Fit: ${d['fit-score']}/100)</h3>\n        <p style=\"margin:4px 0;\"><b>Org:</b> ${d.org}</p>\n        <p style=\"margin:4px 0;\">${d['fit-rationale']}</p>\n        <p style=\"margin:4px 0;\"><b>Checklist:</b><br>${(d.checklist || '').replace(/\\n/g, '<br>')}</p>\n        <p style=\"margin:8px 0 0 0;\"><a href=\"${d.url}\">View Opportunity</a></p>\n      </div>`;\n  }\n}\n\nreturn { html };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1008,
+        -48
+      ],
+      "id": "3368aba0-a464-4213-851c-61d2e6d7f526",
+      "name": "Build Email HTML"
+    },
+    {
+      "parameters": {
+        "sendTo": "bismamunir474@gmail.com",
+        "subject": "Weekly Opportunity Digest",
+        "message": "={{ $json.html }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1200,
+        -48
+      ],
+      "id": "879cf800-da1b-449f-a776-a0c07159d624",
+      "name": "Send Digest Email",
+      "webhookId": "c26d9f8f-9aec-4638-abe8-c8b642a124f1",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "oaJ22WUaeQrUey3G",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "18idCeo7nO_iBMn0La5FIYknqKzv02XwrCgFg2aTbnbk",
+          "mode": "list",
+          "cachedResultName": "Opportunity agent",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/18idCeo7nO_iBMn0La5FIYknqKzv02XwrCgFg2aTbnbk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 2014962491,
+          "mode": "list",
+          "cachedResultName": "Opportunities",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/18idCeo7nO_iBMn0La5FIYknqKzv02XwrCgFg2aTbnbk/edit#gid=2014962491"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "title": "={{ $json.title }}",
+            "url": "={{ $json.url }}",
+            "org": "={{ $json.org }}",
+            "fit-score": "={{ $json[\"fit-score\"] }}",
+            "fit-rationale": "={{ $json[\"fit-rationale\"] }}",
+            "checklist": "={{ $json.checklist }}",
+            "status": "Notified",
+            "hash": ""
+          },
+          "matchingColumns": [
+            "hash"
+          ],
+          "schema": [
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "org",
+              "displayName": "org",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "url",
+              "displayName": "url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "deadline",
+              "displayName": "deadline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "raw_description",
+              "displayName": "raw_description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "hash",
+              "displayName": "hash",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "eligible",
+              "displayName": "eligible",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "eligibility-reason",
+              "displayName": "eligibility-reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fit-score",
+              "displayName": "fit-score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fit-rationale",
+              "displayName": "fit-rationale",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "checklist",
+              "displayName": "checklist",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "date added ",
+              "displayName": "date added ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1040,
+        96
+      ],
+      "id": "88e15c0e-089c-49bb-83bb-3be6a4fd4c56",
+      "name": "Mark As Notified",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "X6Smi9oz0VeQbVe6",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "HasNew Opportunities",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HasNew Opportunities": {
+      "main": [
+        [
+          {
+            "node": "Filter Quality Matches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Quality Matches": {
+      "main": [
+        [
+          {
+            "node": "Build Email HTML",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Mark As Notified",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Email HTML": {
+      "main": [
+        [
+          {
+            "node": "Send Digest Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "49e05d82-356a-469b-a3bc-3c19ec72c35e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8c46280b2696488c3dfe1c98745a4161c147b4bc8f317c3beed2fc096510f973"
+  },
+  "nodeGroups": [],
+  "id": "MgW5fLad7cOsy088",
+  "tags": []
+}

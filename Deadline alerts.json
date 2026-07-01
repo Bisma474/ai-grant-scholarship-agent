@@ -1,0 +1,143 @@
+{
+  "name": "Deadline alerts",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "c9112b71-e1b1-4e85-9b62-e6571d65e42c",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "18idCeo7nO_iBMn0La5FIYknqKzv02XwrCgFg2aTbnbk",
+          "mode": "list",
+          "cachedResultName": "Opportunity agent",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/18idCeo7nO_iBMn0La5FIYknqKzv02XwrCgFg2aTbnbk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 2014962491,
+          "mode": "list",
+          "cachedResultName": "Opportunities",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/18idCeo7nO_iBMn0La5FIYknqKzv02XwrCgFg2aTbnbk/edit#gid=2014962491"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        208,
+        0
+      ],
+      "id": "c3f5f306-53bb-457a-a951-f56ffc90f85e",
+      "name": "Get Upcoming Deadline",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "X6Smi9oz0VeQbVe6",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst today = new Date();\nconst sevenDaysFromNow = new Date();\nsevenDaysFromNow.setDate(today.getDate() + 7);\n\nconst upcoming = [];\n\nfor (const item of items) {\n  const deadlineStr = item.json.deadline || '';\n  \n  // Skip empty, rolling, or ongoing deadlines\n  if (!deadlineStr || \n      deadlineStr.toLowerCase().includes('rolling') || \n      deadlineStr.toLowerCase().includes('ongoing')) {\n    continue;\n  }\n\n  // Parse the deadline string into a Date object\n  const deadlineDate = new Date(deadlineStr);\n  \n  // Check if valid date and falls within next 7 days\n  if (!isNaN(deadlineDate.getTime()) && \n      deadlineDate >= today && \n      deadlineDate <= sevenDaysFromNow) {\n    upcoming.push({ json: item.json });\n  }\n}\n\nreturn upcoming;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        16
+      ],
+      "id": "fee78796-b8ac-4758-bd49-0de82423282c",
+      "name": "Filter Upcoming Deadline"
+    },
+    {
+      "parameters": {
+        "sendTo": "bismamunir474@gmail.com",
+        "subject": "=⏰ Deadline Alert: {{ $json.title }}",
+        "message": "=<div style=\"padding:15px;border:1px solid #ddd;border-radius:6px;\">   <h2 style=\"color:#e53e3e;\">⏰ Deadline Approaching!</h2>   <h3>{{ $json.title }}</h3>   <p><b>Org:</b> {{ $json.org }}</p>   <p><b>Deadline:</b> {{ $json.deadline }}</p>   <p><b>Status:</b> {{ $json.status }}</p>   <p><a href=\"{{ $json.url }}\">View Opportunity</a></p> </div>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        624,
+        16
+      ],
+      "id": "f13bd4b5-874a-408a-917c-af7732aa7493",
+      "name": "Send Deadline Alert",
+      "webhookId": "d5d2153c-7dda-4b4c-838c-6a4d078bd187",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "oaJ22WUaeQrUey3G",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Upcoming Deadline",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Upcoming Deadline": {
+      "main": [
+        [
+          {
+            "node": "Filter Upcoming Deadline",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Upcoming Deadline": {
+      "main": [
+        [
+          {
+            "node": "Send Deadline Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "3ba4e36c-aac9-453d-ad46-7cd134bfb5d9",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8c46280b2696488c3dfe1c98745a4161c147b4bc8f317c3beed2fc096510f973"
+  },
+  "nodeGroups": [],
+  "id": "hYGFbf1oiEOxzpDs",
+  "tags": []
+}
