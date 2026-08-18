@@ -1,23 +1,151 @@
 {
-  "name": "Opportunity Agent-Digest",
+  "name": "Opportunity Agent Ingestion",
   "nodes": [
     {
       "parameters": {
         "rule": {
           "interval": [
             {
-              "field": "hours"
+              "field": "hours",
+              "hoursInterval": 6
             }
           ]
         }
       },
-      "id": "303d516f-8fff-4713-ae14-b588510acf1c",
-      "name": "Schedule Trigger",
+      "id": "8b3e58b5-75a7-4e78-a876-a5643e08bda1",
+      "name": "Execute Workflow1",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.3,
       "position": [
         0,
-        96
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "18idCeo7nO_iBMn0La5FIYknqKzv02XwrCgFg2aTbnbk",
+          "mode": "list",
+          "cachedResultName": "Opportunity agent",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/18idCeo7nO_iBMn0La5FIYknqKzv02XwrCgFg2aTbnbk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Profile",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/18idCeo7nO_iBMn0La5FIYknqKzv02XwrCgFg2aTbnbk/edit#gid=0"
+        },
+        "options": {}
+      },
+      "id": "5b9667bf-369d-4d69-995b-23dfd19c9805",
+      "name": "Get Profile",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        224,
+        192
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "BDarrj1DoFMkxb7K",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "cb85a6d2-1481-4b10-aae6-7542c101c313",
+      "name": "Profile Limit",
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        448,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://opportunitydesk.org/feed/",
+        "options": {}
+      },
+      "id": "355532d7-92db-48bb-8294-decfcdd1a3cc",
+      "name": "RSS Read",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        672,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://opportunitiesforyouth.org/feed/",
+        "options": {}
+      },
+      "id": "55a173b4-7c9f-4729-b4be-0db19fe55237",
+      "name": "RSS Read1",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        672,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://opportunitiescorners.com/feed/",
+        "options": {}
+      },
+      "id": "95dedcf0-bdd0-4555-9066-6b11c70cbe41",
+      "name": "RSS Read2",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        672,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "id": "544f7838-1027-480b-bf58-87d240bcd1f6",
+      "name": "Merge1",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        896,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {\n  title: $input.item.json.title || '',\n  org: $input.item.json['dc:creator'] || 'OpportunityDesk',\n  url: $input.item.json.link || '',\n  description: $input.item.json.contentSnippet || $input.item.json.content || '',\n  rawDate: $input.item.json.isoDate || $input.item.json.pubDate || ''\n};"
+      },
+      "id": "10741d46-3d6e-4cf8-9a74-0943eef2b56f",
+      "name": "Code in JavaScript",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const crypto = require('crypto');\nconst normalized = (\n  $input.item.json.title + $input.item.json.org\n).toLowerCase().replace(/\\s+/g, ' ').trim();\n\nconst hash = crypto.createHash('md5').update(normalized).digest('hex');\n\nreturn {\n  ...$input.item.json,\n  hash: hash\n};"
+      },
+      "id": "ad450250-12e5-455e-af60-4545c18acb32",
+      "name": "Generate Hash",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        192
       ]
     },
     {
@@ -39,21 +167,22 @@
         "filtersUI": {
           "values": [
             {
-              "lookupColumn": "status",
-              "lookupValue": "New"
+              "lookupColumn": "hash",
+              "lookupValue": "={{ $json.hash}}"
             }
           ]
         },
         "options": {}
       },
-      "id": "edd41daf-44f4-4940-8814-6574be40a3fb",
-      "name": "Get row(s) in sheet",
+      "id": "3754c92b-ebf6-47eb-9ff1-058fda39cfa9",
+      "name": "Check Duplicate",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
       "position": [
-        224,
-        96
+        1568,
+        192
       ],
+      "alwaysOutputData": true,
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "BDarrj1DoFMkxb7K",
@@ -63,6 +192,104 @@
     },
     {
       "parameters": {
+        "jsCode": "const lookupResults = $input.all();\n\nconst isEmpty = lookupResults.length === 0 || \n                 (lookupResults.length === 1 && Object.keys(lookupResults[0].json).length === 0);\n\nif (isEmpty) {\n  return $('Generate Hash').all();\n} else {\n  return [];\n}"
+      },
+      "id": "be3cb41b-d429-413b-872c-c24683f39f9a",
+      "name": "Dedup Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1792,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "maxItems": 10
+      },
+      "id": "3b3fca7b-22d0-4d0a-b573-9df4de85c727",
+      "name": "Limit Items",
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        2016,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const profile = $('Get Profile').first().json;\nconst opp = $input.item.json;\n\nconst prompt = `You are an eligibility checker. Given the student profile and opportunity below, determine eligibility. Respond ONLY with valid JSON, no markdown, no preamble, no explanation outside the JSON.\n\nSTUDENT PROFILE:\nField: ${profile.field}\nDegree Level: ${profile['degree-level']}\nCGPA: ${profile.cgpa}\nCountry: ${profile.country}\nSkills: ${profile.skill}\n\nOPPORTUNITY:\nTitle: ${opp.title}\nOrg: ${opp.org}\nDescription: ${opp.description}\n\nRespond in this exact JSON shape and nothing else:\n{\"eligible\": true, \"reason\": \"one sentence\", \"missing_requirements\": []}`;\n\nreturn {\n  ...opp,\n  requestBody: JSON.stringify({\n    model: \"openai/gpt-oss-20b\",\n    messages: [\n      { role: \"user\", content: prompt }\n    ]\n  })\n};"
+      },
+      "id": "e49bfa8d-383b-46a3-9d30-b78483434240",
+      "name": "Build Eligibility Body",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2240,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "groqApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.requestBody }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 5,
+              "batchInterval": 15000
+            }
+          }
+        }
+      },
+      "id": "036f2275-dadb-44c7-8a36-190fb01e8e88",
+      "name": "Check Eligibility",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2464,
+        192
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "groqApi": {
+          "id": "xZXMFS8UbOYRtOXb",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const responseText = $input.item.json.choices[0].message.content;\nconst cleaned = responseText.replace(/```json|```/g, '').trim();\n\nlet parsed;\ntry {\n  parsed = JSON.parse(cleaned);\n} catch (e) {\n  parsed = { eligible: false, reason: 'parse_error', missing_requirements: [] };\n}\n\n// Extract deadline from description\nconst description = $('Build Eligibility Body').item.json.description || '';\nlet deadline = '';\n\nconst patterns = [\n  /Deadline:\\s*([A-Za-z]+\\s+\\d{1,2},?\\s+\\d{4})/i,\n  /Deadline:\\s*(\\d{1,2}\\s+[A-Za-z]+,?\\s+\\d{4})/i,\n  /Application Deadline:\\s*([A-Za-z]+\\s+\\d{1,2},?\\s+\\d{4})/i,\n  /Application Deadline:\\s*(\\d{1,2}\\s+[A-Za-z]+,?\\s+\\d{4})/i,\n  /Deadline:\\s*(On Rolling Basis)/i,\n  /Deadline:\\s*(Ongoing)/i,\n];\n\nfor (const pattern of patterns) {\n  const match = description.match(pattern);\n  if (match) {\n    deadline = match[1].trim();\n    break;\n  }\n}\n\nreturn {\n  ...$('Build Eligibility Body').item.json,\n  eligible: parsed.eligible,\n  eligibilityReason: parsed.reason,\n  missingRequirements: (parsed.missing_requirements || []).join(', '),\n  deadline: deadline\n};"
+      },
+      "id": "d063c712-0618-4478-9f39-9669086d965b",
+      "name": "Parse Eligibility",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2688,
+        192
+      ]
+    },
+    {
+      "parameters": {
         "conditions": {
           "options": {
             "caseSensitive": true,
@@ -72,12 +299,12 @@
           },
           "conditions": [
             {
-              "id": "8653c0b8-2845-4f40-af7a-20260942cfba",
-              "leftValue": "={{ $json.title }}",
+              "id": "93b15592-4ee3-403e-9492-23579c486afe",
+              "leftValue": "={{ $json.eligible }}",
               "rightValue": "",
               "operator": {
-                "type": "string",
-                "operation": "notEmpty",
+                "type": "boolean",
+                "operation": "true",
                 "singleValue": true
               }
             }
@@ -86,12 +313,84 @@
         },
         "options": {}
       },
-      "id": "3cdfe0db-1851-4a5c-ba0f-577bddeaf000",
-      "name": "HasNew Opportunities",
+      "id": "24005c26-a4a4-479c-99f2-aa0d8336b84d",
+      "name": "Is Eligible",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        448,
+        2912,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const profile = $('Get Profile').first().json;\nconst opp = $('Parse Eligibility').item.json;\n\nconst prompt = `You are a fit-scoring assistant. Score how well this opportunity matches the student's profile, skills, and resume. Respond ONLY with valid JSON, no markdown, no preamble.\n\nSTUDENT PROFILE:\nField: ${profile.field}\nSkills: ${profile.skill}\nResume Summary: ${profile['resume-text']}\n\nOPPORTUNITY:\nTitle: ${opp.title}\nOrg: ${opp.org}\nDescription: ${opp.description}\n\nRespond in this exact JSON shape and nothing else:\n{\"fit_score\": 75, \"rationale\": \"one to two sentences\"}`;\n\nreturn {\n  ...opp,\n  requestBody: JSON.stringify({\n    model: \"openai/gpt-oss-20b\",\n    messages: [\n      { role: \"user\", content: prompt }\n    ]\n  })\n};"
+      },
+      "id": "33b961b6-e99d-42ec-8977-01faaa431535",
+      "name": "Build Score Fit Body",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3136,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "groqApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.requestBody }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 5,
+              "batchInterval": 15000
+            }
+          }
+        }
+      },
+      "id": "084d00dd-9173-4cc9-88aa-3e56778def9c",
+      "name": "Score Fit",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        3360,
+        96
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "groqApi": {
+          "id": "xZXMFS8UbOYRtOXb",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const responseText = $input.item.json.choices[0].message.content;\nconst cleaned = responseText.replace(/```json|```/g, '').trim();\n\nlet parsed;\ntry {\n  parsed = JSON.parse(cleaned);\n} catch (e) {\n  parsed = { fit_score: 0, rationale: 'parse_error' };\n}\n\nreturn {\n  ...$('Build Score Fit Body').item.json,\n  fitScore: parsed.fit_score,\n  fitRationale: parsed.rationale\n};"
+      },
+      "id": "ad70c077-8420-4951-8a60-ea248db915af",
+      "name": "Parse Fit Score",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3584,
         96
       ]
     },
@@ -106,18 +405,8 @@
           },
           "conditions": [
             {
-              "id": "75954a57-7a1e-4dfb-96cd-1d247aa766ad",
-              "leftValue": "={{ $json.eligible }}",
-              "rightValue": false,
-              "operator": {
-                "type": "boolean",
-                "operation": "true",
-                "singleValue": true
-              }
-            },
-            {
-              "id": "ce4f8df8-a816-4209-9a76-c474f12e455b",
-              "leftValue": "={{ $json[\"fit-score\"] }}",
+              "id": "dffa1660-8eb6-4ac0-9cbc-aebf28e4d93b",
+              "leftValue": "={{ $json.fitScore }}",
               "rightValue": 70,
               "operator": {
                 "type": "number",
@@ -125,58 +414,95 @@
               }
             }
           ],
-          "combinator": "or"
+          "combinator": "and"
         },
         "options": {}
       },
-      "id": "f17a4c2f-7cce-4ea0-8d4b-d8e06d45053d",
-      "name": "Filter Quality Matches",
-      "type": "n8n-nodes-base.filter",
+      "id": "da88f1d2-faa7-46b6-8341-62d6fcf3b481",
+      "name": "Fit Threshold",
+      "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        672,
+        3808,
         96
       ]
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nlet html = '<h2>Your Weekly Opportunity Digest</h2>';\n\nif (items.length === 0) {\n  html += '<p>No new matching opportunities this week.</p>';\n} else {\n  for (const item of items) {\n    const d = item.json;\n    html += `\n      <div style=\"margin-bottom:20px;padding:15px;border:1px solid #ddd;border-radius:6px;\">\n        <h3 style=\"margin:0 0 8px 0;\">${d.title} (Fit: ${d['fit-score']}/100)</h3>\n        <p style=\"margin:4px 0;\"><b>Org:</b> ${d.org}</p>\n        <p style=\"margin:4px 0;\">${d['fit-rationale']}</p>\n        <p style=\"margin:4px 0;\"><b>Checklist:</b><br>${(d.checklist || '').replace(/\\n/g, '<br>')}</p>\n        <p style=\"margin:8px 0 0 0;\"><a href=\"${d.url}\">View Opportunity</a></p>\n      </div>`;\n  }\n}\n\nreturn { html };"
+        "mode": "runOnceForEachItem",
+        "jsCode": "const profile = $('Get Profile').first().json;\nconst opp = $input.item.json;\n\nconst prompt = `You are an application assistant. Based on the student's profile, resume, and this opportunity, generate a short actionable checklist: required documents, an internal deadline pacing plan, and any gaps between the resume and the opportunity's stated requirements. Respond ONLY with valid JSON, no markdown, no preamble.\n\nSTUDENT PROFILE:\nField: ${profile.field}\nSkills: ${profile.skill}\nResume Summary: ${profile['resume-text']}\n\nOPPORTUNITY:\nTitle: ${opp.title}\nOrg: ${opp.org}\nDescription: ${opp.description}\nDeadline info if mentioned in description: extract it if present\n\nRespond in this exact JSON shape and nothing else:\n{\"checklist\": \"- Document 1\\\\n- Document 2\\\\n- Pacing step 1\\\\n- Pacing step 2\", \"resume_gaps\": \"one to two sentences on any mismatch between resume and requirements\"}`;\n\nreturn {\n  ...opp,\n  requestBody: JSON.stringify({\n    model: \"openai/gpt-oss-20b\",\n    messages: [\n      { role: \"user\", content: prompt }\n    ]\n  })\n};"
       },
-      "id": "81252453-b17f-4a95-8e70-de47b66578ef",
-      "name": "Build Email HTML",
+      "id": "5127136f-5c88-4c18-a6b9-2cfc3f50223c",
+      "name": "Build Checklist Body",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        896,
+        4032,
         0
       ]
     },
     {
       "parameters": {
-        "sendTo": "bismamunir474@gmail.com",
-        "subject": "Weekly Opportunity Digest",
-        "message": "={{ $json.html }}",
-        "options": {}
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "groqApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.requestBody }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 5,
+              "batchInterval": 15000
+            }
+          }
+        }
       },
-      "id": "70413f9d-945a-4e68-a708-26aa9a658487",
-      "name": "Send Digest Email",
-      "type": "n8n-nodes-base.gmail",
-      "typeVersion": 2.2,
+      "id": "bea496c9-f4c3-4c83-8db0-afd49827e587",
+      "name": "Generate Checklist",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
       "position": [
-        1120,
+        4256,
         0
       ],
-      "webhookId": "1bd27152-a67a-46f6-99ff-a928b086e120",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
       "credentials": {
-        "gmailOAuth2": {
-          "id": "MBVTySLF9G9Ep9ar",
-          "name": "Gmail account"
+        "groqApi": {
+          "id": "xZXMFS8UbOYRtOXb",
+          "name": "Groq account"
         }
       }
     },
     {
       "parameters": {
-        "operation": "update",
+        "mode": "runOnceForEachItem",
+        "jsCode": "const responseText = $input.item.json.choices[0].message.content;\nconst cleaned = responseText.replace(/```json|```/g, '').trim();\n\nlet parsed;\ntry {\n  parsed = JSON.parse(cleaned);\n} catch (e) {\n  parsed = { checklist: responseText, resume_gaps: '' };\n}\n\nreturn {\n  ...$('Build Checklist Body').item.json,\n  checklist: parsed.checklist,\n  resumeGaps: parsed.resume_gaps\n};"
+      },
+      "id": "8bf0362f-9dc6-42f3-9792-091e0c69a9fc",
+      "name": "Parse Checklist",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
         "documentId": {
           "__rl": true,
           "value": "18idCeo7nO_iBMn0La5FIYknqKzv02XwrCgFg2aTbnbk",
@@ -192,163 +518,103 @@
           "cachedResultUrl": "https://docs.google.com/spreadsheets/d/18idCeo7nO_iBMn0La5FIYknqKzv02XwrCgFg2aTbnbk/edit#gid=2014962491"
         },
         "columns": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "title": "={{ $json.title }}",
-            "url": "={{ $json.url }}",
-            "org": "={{ $json.org }}",
-            "fit-score": "={{ $json[\"fit-score\"] }}",
-            "fit-rationale": "={{ $json[\"fit-rationale\"] }}",
-            "checklist": "={{ $json.checklist }}",
-            "status": "Notified",
-            "hash": ""
-          },
-          "matchingColumns": [
-            "hash"
-          ],
-          "schema": [
-            {
-              "id": "title",
-              "displayName": "title",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "org",
-              "displayName": "org",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "url",
-              "displayName": "url",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "deadline",
-              "displayName": "deadline",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "raw_description",
-              "displayName": "raw_description",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "hash",
-              "displayName": "hash",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "eligible",
-              "displayName": "eligible",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "eligibility-reason",
-              "displayName": "eligibility-reason",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "fit-score",
-              "displayName": "fit-score",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "fit-rationale",
-              "displayName": "fit-rationale",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "checklist",
-              "displayName": "checklist",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "status",
-              "displayName": "status",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "date added ",
-              "displayName": "date added ",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "row_number",
-              "displayName": "row_number",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "number",
-              "canBeUsedToMatch": true,
-              "readOnly": true,
-              "removed": true
-            }
-          ],
+          "mappingMode": "autoMapInputData",
+          "matchingColumns": [],
+          "schema": [],
           "attemptToConvertTypes": false,
           "convertFieldsToString": false
         },
         "options": {}
       },
-      "id": "e47e40a6-47c6-4e65-9d44-ef4fb5cfc861",
-      "name": "Mark As Notified",
+      "id": "1c20ae24-0afa-434a-8525-e517f2375491",
+      "name": "Save Opportunity",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
       "position": [
-        896,
+        4704,
+        0
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "BDarrj1DoFMkxb7K",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "18idCeo7nO_iBMn0La5FIYknqKzv02XwrCgFg2aTbnbk",
+          "mode": "list",
+          "cachedResultName": "Opportunity agent",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/18idCeo7nO_iBMn0La5FIYknqKzv02XwrCgFg2aTbnbk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 2014962491,
+          "mode": "list",
+          "cachedResultName": "Opportunities",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/18idCeo7nO_iBMn0La5FIYknqKzv02XwrCgFg2aTbnbk/edit#gid=2014962491"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "63c6f79d-8e0b-44a4-92a3-6927e5db3845",
+      "name": "Low Fit",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        4032,
         192
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "BDarrj1DoFMkxb7K",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "18idCeo7nO_iBMn0La5FIYknqKzv02XwrCgFg2aTbnbk",
+          "mode": "list",
+          "cachedResultName": "Opportunity agent",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/18idCeo7nO_iBMn0La5FIYknqKzv02XwrCgFg2aTbnbk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 2014962491,
+          "mode": "list",
+          "cachedResultName": "Opportunities",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/18idCeo7nO_iBMn0La5FIYknqKzv02XwrCgFg2aTbnbk/edit#gid=2014962491"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "18463aac-89df-4282-a97d-361e28dfe70a",
+      "name": "Append row in sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        3136,
+        288
       ],
       "credentials": {
         "googleSheetsOAuth2Api": {
@@ -360,60 +626,277 @@
   ],
   "pinData": {},
   "connections": {
-    "Schedule Trigger": {
+    "Execute Workflow1": {
       "main": [
         [
           {
-            "node": "Get row(s) in sheet",
+            "node": "Get Profile",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Get row(s) in sheet": {
+    "Get Profile": {
       "main": [
         [
           {
-            "node": "HasNew Opportunities",
+            "node": "Profile Limit",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "HasNew Opportunities": {
+    "Profile Limit": {
       "main": [
         [
           {
-            "node": "Filter Quality Matches",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Filter Quality Matches": {
-      "main": [
-        [
-          {
-            "node": "Build Email HTML",
+            "node": "RSS Read",
             "type": "main",
             "index": 0
           },
           {
-            "node": "Mark As Notified",
+            "node": "RSS Read1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "RSS Read2",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Build Email HTML": {
+    "RSS Read": {
       "main": [
         [
           {
-            "node": "Send Digest Email",
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Read1": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "RSS Read2": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Generate Hash",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Hash": {
+      "main": [
+        [
+          {
+            "node": "Check Duplicate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Duplicate": {
+      "main": [
+        [
+          {
+            "node": "Dedup Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dedup Check": {
+      "main": [
+        [
+          {
+            "node": "Limit Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit Items": {
+      "main": [
+        [
+          {
+            "node": "Build Eligibility Body",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Eligibility Body": {
+      "main": [
+        [
+          {
+            "node": "Check Eligibility",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Eligibility": {
+      "main": [
+        [
+          {
+            "node": "Parse Eligibility",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Eligibility": {
+      "main": [
+        [
+          {
+            "node": "Is Eligible",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Eligible": {
+      "main": [
+        [
+          {
+            "node": "Build Score Fit Body",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Score Fit Body": {
+      "main": [
+        [
+          {
+            "node": "Score Fit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score Fit": {
+      "main": [
+        [
+          {
+            "node": "Parse Fit Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Fit Score": {
+      "main": [
+        [
+          {
+            "node": "Fit Threshold",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fit Threshold": {
+      "main": [
+        [
+          {
+            "node": "Build Checklist Body",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Low Fit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Checklist Body": {
+      "main": [
+        [
+          {
+            "node": "Generate Checklist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Checklist": {
+      "main": [
+        [
+          {
+            "node": "Parse Checklist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Checklist": {
+      "main": [
+        [
+          {
+            "node": "Save Opportunity",
             "type": "main",
             "index": 0
           }
@@ -421,17 +904,18 @@
       ]
     }
   },
-  "active": true,
+  "active": false,
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "7ea9ea40-39e0-4926-bede-fc5ca633cc72",
+  "versionId": "d2f3fb10-c67c-4388-9f17-4babdd2284a7",
   "meta": {
+    "templateCredsSetupCompleted": true,
     "instanceId": "5b224674242f5cf7d027d3e7d53e48992f2cb42ed21b19e29c6d5386d9bbcadf"
   },
   "nodeGroups": [],
-  "id": "hgBfuScbdPkngcAE",
+  "id": "iGvHG9Eey9arHgbe",
   "tags": []
 }
